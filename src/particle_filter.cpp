@@ -93,6 +93,42 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
+  for (auto & p: particles) {
+    // Convert observations from VEHICULE to MAP's coordinate
+    std::vector<LandmarkObs> map_observations;
+    for (auto const& obs: observations) {
+      LandmarkObs map_obs = LandmarkObs();
+      map_obs.id = obs.id; // Copy over the id
+      map_obs.x = p.x * cos(p.theta) - p.y * sin(p.theta) + obs.x;
+      // Map's y points downards, therefore we've a minus
+      map_obs.y = -(p.x * sin(p.theta) + p.y * cos(p.theta)) + obs.y;
+
+      map_observations.push_back(map_obs);
+    }
+
+    // Keep only map landmarks that are in sensor range
+    std::vector<LandmarkObs> map_landmarks_in_range;
+    for (auto const& landmark_s: map_landmarks.landmark_list) {
+        double distance = dist(p.x, p.y, landmark_s.x_f, landmark_s.y_f);
+        if (distance > sensor_range) {
+          // Filter out landmarks out of range
+          continue;
+        }
+
+        LandmarkObs landmark = LandmarkObs();
+        landmark.id = landmark_s.id_i;
+        landmark.x = landmark_s.x_f;
+        landmark.y = landmark_s.y_f;
+        map_landmarks_in_range.push_back(landmark);
+    }
+
+    // Associate a landmark to each observation
+    dataAssociation(map_landmarks_in_range, map_observations);
+
+    // Set weight
+    // TODO Finish weight processing
+    p.weight = 1;
+  }
 }
 
 void ParticleFilter::resample() {
