@@ -63,20 +63,18 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
-  // TODO Seriously the prototype of this method is terrible!!! It doesn't allow the case where no landmark correspond to an observation
-  int obs_size = observations.size();
-  for (int i = 0; i < obs_size; ++i) {
-    LandmarkObs obs = observations[i];
-    LandmarkObs closest = predicted[0]; // FIXME out of bounds
-    double closest_distance = dist(obs.x, obs.y, closest.x, closest.y);
+  for (auto & obs: observations) {
+    int closest_landmark_id = 0; // No landmark found
+    double closest_landmark_distance = std::numeric_limits<double>::max();
     for(auto const& p: predicted) {
       double distance = dist(obs.x, obs.y, p.x, p.y);
-      if (distance < closest_distance) { // New closest found
-        closest = p;
-        closest_distance = distance;
+      if (distance <= closest_landmark_distance) { // New closest found
+        closest_landmark_id = p.id;
+        closest_landmark_distance = distance;
       }
     }
-    observations[i] = closest;
+    // Save id of closest landmark found
+    obs.id = closest_landmark_id;
   }
 }
 
