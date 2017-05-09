@@ -31,8 +31,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		p.theta = dist_theta(gen);
 		p.weight = 1;
 		particles.push_back(p);
-    // TODO what is the diff between p.weight and weights
-    weights.push_back(1);
 	}
 
 	is_initialized = true;
@@ -82,38 +80,38 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
   }
 }
 
-void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
+void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> observations, Map map_landmarks) {
-	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
-	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
-	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
-	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
-	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
-	//   The following is a good resource for the theory:
-	//   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-	//   and the following is a good resource for the actual equation to implement (look at equation 
-	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
-	//   for the fact that the map's y-axis actually points downwards.)
-	//   http://planning.cs.uiuc.edu/node99.html
+  // Cache some constants into stack
+  double cov_x = std_landmark[0];
+  double cov_y = std_landmark[1];
+  double cov_x_sq_2 = 2*cov_x*cov_x;
+  double cov_y_sq_2 = 2*cov_y*cov_y;
+
   for (auto & p: particles) {
+    // Clear landmarks associated to observations
+    for (auto & obs: observations) {
+      obs.id = 0;
+    }
+
     // Convert observations from VEHICULE to MAP's coordinate
     std::vector<LandmarkObs> map_observations;
     for (auto const& obs: observations) {
+      double cos_t = cos(p.theta);
+      double sin_t = sin(p.theta);
       LandmarkObs map_obs = LandmarkObs();
-      map_obs.id = obs.id; // Copy over the id
-      map_obs.x = p.x * cos(p.theta) - p.y * sin(p.theta) + obs.x;
-      // Map's y points downards, therefore we've a minus
-      map_obs.y = -(p.x * sin(p.theta) + p.y * cos(p.theta)) + obs.y;
+      map_obs.x = p.x + (obs.x * cos_t - obs.y * sin_t);
+      map_obs.y = p.y + (obs.x * sin_t + obs.y * cos_t);
 
       map_observations.push_back(map_obs);
     }
 
-    // Keep only map landmarks that are in sensor range
+    // Optimization - Filter out landmarks that are out of sensor range for current particle
     std::vector<LandmarkObs> map_landmarks_in_range;
     for (auto const& landmark_s: map_landmarks.landmark_list) {
         double distance = dist(p.x, p.y, landmark_s.x_f, landmark_s.y_f);
         if (distance > sensor_range) {
-          // Filter out landmarks out of range
+          // Filter out
           continue;
         }
 
@@ -124,12 +122,28 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         map_landmarks_in_range.push_back(landmark);
     }
 
-    // Associate a landmark to each observation
+    // Attempt to associate a landmark to each observation
     dataAssociation(map_landmarks_in_range, map_observations);
 
-    // Set weight
-    // TODO Finish weight processing
-    p.weight = 1;
+    // Update weight
+    double prob = 1;
+    for (auto const& obs: map_observations) {
+      if (obs.id == 0) {
+        // Not found a landmark for this observation, skipping
+        continue;
+      }
+
+      int landmark_index = obs.id - 1;
+      Map::single_landmark_s landmark = map_landmarks.landmark_list[landmark_index];
+
+      double x_diff = obs.x - landmark.x_f;
+      double y_diff = obs.y - landmark.y_f;
+      double e = -( (x_diff*x_diff/cov_x_sq_2) + (y_diff*y_diff/cov_y_sq_2) );
+      prob *= (1/(2.*M_PI*cov_x*cov_y)) * exp(e);
+    }
+
+    // Set non normalized weight
+    p.weight = prob;
   }
 }
 
