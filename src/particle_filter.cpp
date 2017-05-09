@@ -12,6 +12,8 @@
 
 #include "particle_filter.h"
 
+#define ZERO_YAW_RATE_THRESHOLD 0.00001
+
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
   std::default_random_engine gen;
 
@@ -40,7 +42,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
   std::default_random_engine gen;
 
   for(auto &p: particles) {
-    if (yaw_rate == 0) {
+    if (yaw_rate < ZERO_YAW_RATE_THRESHOLD && yaw_rate > -ZERO_YAW_RATE_THRESHOLD) {
       p.x += velocity * delta_t * cos(p.theta);
       p.y += velocity * delta_t * sin(p.theta);
       // Theta is unchanged as yaw_rate is null
