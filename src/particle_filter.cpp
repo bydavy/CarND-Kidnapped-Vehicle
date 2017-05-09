@@ -12,6 +12,7 @@
 
 #include "particle_filter.h"
 
+// Threshold to detect when yaw rate can be considered as zero.
 #define ZERO_YAW_RATE_THRESHOLD 0.00001
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
@@ -22,10 +23,10 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	std::normal_distribution<double> dist_y(y, std[1]);
 	std::normal_distribution<double> dist_theta(theta, std[2]);
 
-  num_particles = 1000; // TODO Rework number of particles
+  num_particles = 10;
 	for (int i = 0; i < num_particles; ++i) {
 		Particle p = Particle();
-		p.id = i;
+    p.id = i; // Particle id is index
 		p.x = dist_x(gen);
 		p.y = dist_y(gen);
 		p.theta = dist_theta(gen);
