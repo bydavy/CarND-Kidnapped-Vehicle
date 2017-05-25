@@ -23,7 +23,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	std::normal_distribution<double> dist_y(y, std[1]);
 	std::normal_distribution<double> dist_theta(theta, std[2]);
 
-  num_particles = 10;
+  num_particles = 1000;
 	for (int i = 0; i < num_particles; ++i) {
 		Particle p = Particle();
     p.id = i; // Particle id is index
